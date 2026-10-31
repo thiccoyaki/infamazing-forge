@@ -72,8 +72,11 @@ def write(vid: int) -> Path:
     (d / "video.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     db.mark_packaged(vid)
     from . import drive
-    drive.mirror_async(d, v.get("_old_folder"))
+    LAST_DRIVE[vid] = drive.mirror_now(d, v.get("_old_folder"))  # local copy into the Drive folder: quick
     return d
+
+
+LAST_DRIVE: dict[int, str] = {}
 
 
 def folder_state(v: dict) -> str:

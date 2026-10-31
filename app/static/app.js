@@ -224,13 +224,14 @@ function renderVideo() {
 }
 async function saveVideo(extra = {}) {
   const v = S.video;
-  await put(`/videos/${v.id}`, {title: $("#ve-title").value, script: $("#ve-script").value, format: $("#ve-fmt").value, ...extra});
+  const r = await put(`/videos/${v.id}`, {title: $("#ve-title").value, script: $("#ve-script").value, format: $("#ve-fmt").value, ...extra});
+  S.lastDrive = r.drive || "";
   S.video = await api(`/videos/${v.id}`); $("#ve-title").value = S.video.title; renderVideo();
 }
 $("#ve-back").onclick = loadVideos;
 $("#ve-script").oninput = () => { renderVideo(); $("#ve-folder").textContent = "● unsaved edits"; $("#ve-folder").className = "fstate warn"; };
 $("#ve-fmt").onchange = renderVideo;
-$("#ve-save").onclick = guard(async () => { await saveVideo(); toast("saved (local + Drive)"); });
+$("#ve-save").onclick = guard(async () => { await saveVideo(); toast(S.lastDrive.startsWith("Drive: synced") ? "saved locally + Drive" : "saved locally. " + S.lastDrive, 6000); });
 $("#ve-open").onclick = guard(() => post(`/videos/${S.video.id}/open`));
 $("#ve-done").onclick = guard(async () => { await saveVideo(); await post(`/videos/${S.video.id}/done`); S.refs = []; S.video = await api(`/videos/${S.video.id}`); renderVideo(); toast("done: added to past scripts"); });
 $("#ve-del").onclick = guard(async () => { if (!confirm("Delete from the app? (the folder stays on disk / Drive)")) return; await del(`/videos/${S.video.id}`); loadVideos(); });
@@ -336,14 +337,15 @@ async function loadSettings() {
   $("#set-vo").innerHTML = `voice <b>${esc(s.voice.voice_name || "none")}</b><br>${esc(s.settings.model)} · stability ${s.settings.stability} · similarity ${s.settings.similarity} · style ${s.settings.style ?? 0}<br>
     speed ${s.deadair.speed}${s.deadair.pitch_shift ? " (pitch follows)" : ""} · min pause ${s.deadair.min_pause} → ${s.deadair.pause_to} · threshold ${s.deadair.threshold}`;
   $("#set-sf").textContent = `story-forge: ${s.story_forge_dir}` + (s.kalemod_imported ? ` · imported ${when(s.kalemod_imported)}` : " · not imported yet");
-  $("#set-drive").value = s.drive.dir || ""; $("#set-drive-url").value = s.drive_url || "";
+  $("#set-drive").value = s.drive.auto ? "" : (s.drive.dir || ""); $("#set-drive").placeholder = s.drive.auto ? `auto: ${s.drive.dir}` : "G:\\My Drive\\Infamazing\\FORGE"; $("#set-drive-url").value = s.drive_url || "";
   const l = s.drive.last || {};
-  $("#set-drive-st").innerHTML = (s.drive.ok ? `<span class="pass">folder found</span>` : s.drive.dir ? `<span class="fail">folder not found</span>` : "not set: videos are only saved locally") +
+  $("#set-drive-st").innerHTML = (s.drive.ok ? `<span class="pass">${s.drive.auto ? "found automatically" : "folder found"}: ${esc(s.drive.dir)}</span>` : s.drive.dir ? `<span class="fail">folder not found</span>` : "not set: videos are only saved locally") +
     (l.at ? ` · last sync ${when(l.at)} ${esc(l.folder || "")}${l.error ? ` <span class="fail">${esc(l.error)}</span>` : ""}` : "");
   $("#set-global").value = s.global;
 }
 $("#set-import").onclick = guard(async () => { await post("/settings/import-kalemod"); S.voices = null; toast("Kalemod settings imported"); loadSettings(); });
 $("#set-drive-save").onclick = guard(async () => { await put("/settings", {drive_dir: $("#set-drive").value.trim(), drive_url: $("#set-drive-url").value.trim()}); toast("saved"); loadSettings(); });
+$("#set-drive-detect").onclick = guard(async () => { const r = await post("/drive/detect"); toast(r.dir ? "found " + r.dir : "no Drive folder with \"infamazing\" in its name found. Paste the path instead.", 6000); loadSettings(); });
 $("#set-drive-all").onclick = guard(async () => { const {task} = await post("/drive/sync-all"); const r = await waitTask(task, $("#set-log"), $("#set-drive-all")); toast(`${r.synced} folder(s) synced`); });
 $("#set-keys").onclick = guard(async () => { const b = {default_llm: $("#set-llm").value}; if ($("#set-yt").value) b.yt_api_key = $("#set-yt").value; await put("/settings", b); toast("saved"); });
 $("#set-global-save").onclick = guard(async () => { await put("/settings", {global: $("#set-global").value}); toast("saved"); });

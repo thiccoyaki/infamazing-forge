@@ -99,7 +99,9 @@ def get_settings():
 def put_settings(body: dict):
     for k in SETTING_KEYS:
         if k in body:
-            db.set_setting(k, body[k])
+            db.set_setting(k, drive.clean_path(body[k]) if k == "drive_dir" else body[k])
+    if "drive_dir" in body and drive.status()["ok"]:  # new Drive folder: copy everything made so far
+        run_task(drive.mirror_all)
     if "global" in body:
         (C.FORMATS_DIR / "_global.md").write_text(body["global"], encoding="utf-8")
     return {"ok": True}
@@ -112,6 +114,11 @@ def import_kalemod():
     if not r["found"]:
         raise HTTPException(400, f"story-forge's forge.db not found in {r['dir']}. Set STORY_FORGE_DIR in .env.")
     return r
+
+
+@app.post("/api/drive/detect")
+def drive_detect():
+    return {"dir": drive.detect(force=True)}
 
 
 @app.post("/api/drive/sync-all")
@@ -362,7 +369,8 @@ def generate(b: Generate):
                 if iid:
                     db.update_idea(iid, status="used", video_id=vid)
                 d = output.write(vid)
-                log.append(f"  saved: {d.name} ({len(g['script'])} chars, {len(g['refs'])} refs)")
+                log.append(f"  saved: {d} ({len(g['script'])} chars, {len(g['refs'])} refs)")
+                log.append("  " + output.LAST_DRIVE.get(vid, ""))
                 if b.make_vo:
                     _do_vo(vid, None, log)
                 made.append(vid)
@@ -382,7 +390,7 @@ def update_video(vid: int, body: dict):
         allowed["title"] = " ".join(str(allowed["title"]).split())[:100] or v["title"]
     db.update_video(vid, **allowed)
     d = output.write(vid)
-    return {"ok": True, "folder": d.name}
+    return {"ok": True, "folder": d.name, "drive": output.LAST_DRIVE.get(vid, "")}
 
 
 @app.delete("/api/videos/{vid}")
@@ -439,6 +447,7 @@ def _do_vo(vid: int, b: VOBody | None, log: list) -> dict:
         db.set_setting("voice_settings", settings)
         db.set_setting("deadair", dead)
     output.write(vid)
+    log.append(output.LAST_DRIVE.get(vid, ""))
     return {"seconds": clean_s, "pace": pace}
 
 

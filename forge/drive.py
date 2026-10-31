@@ -14,16 +14,62 @@ from . import config as C, db
 _lock = threading.Lock()
 
 
+_detected: str | None = None
+
+
+def clean_path(p: str) -> str:
+    """Explorer's "Copy as path" wraps it in quotes; people also paste trailing slashes."""
+    return (p or "").strip().strip('"').strip("'").strip().rstrip("\\/") or ""
+
+
+def detect(force: bool = False) -> str:
+    """Find the Infamazing folder in Google Drive for desktop on any drive letter (every signed-in account gets
+    its own letter): a folder with "infamazing" in its name under My Drive or Shared drives, up to 3 levels deep.
+    Prefers ones also named forge / scripts / vo."""
+    global _detected
+    if _detected is not None and not force:
+        return _detected
+    found = []
+    if os.name == "nt":
+        for letter in "GHIJKLMNOPQRSTUVWXYZDEF":
+            for top in ("My Drive", "Shared drives"):
+                root = Path(f"{letter}:\\") / top
+                try:
+                    if not root.is_dir():
+                        continue
+                    level = [root]
+                    for depth in range(3):
+                        nxt = []
+                        for d in level:
+                            for c in d.iterdir():
+                                if c.is_dir():
+                                    nxt.append(c)
+                                    if "infamazing" in c.name.lower():
+                                        found.append((depth, c))
+                        level = nxt[:400]
+                except OSError:
+                    continue
+    def rank(x):
+        depth, p = x
+        n = p.name.lower()
+        return (-sum(k in n for k in ("forge", "script", "vo", "video")), -depth)
+    _detected = str(sorted(found, key=rank)[0][1]) if found else ""
+    return _detected
+
+
 def target() -> str:
     C.load_env()
-    t = (os.environ.get("FORGE_DRIVE_DIR") or db.get_setting("drive_dir", "") or "").strip()
-    return "" if t.lower() == "off" else t
+    t = clean_path(os.environ.get("FORGE_DRIVE_DIR") or db.get_setting("drive_dir", "") or "")
+    if t.lower() == "off":
+        return ""
+    return t or detect()
 
 
 def status() -> dict:
     t = target()
-    return {"dir": t, "ok": bool(t) and Path(t).is_dir(), "last": db.get_setting("drive_last", {}),
-            "url": db.get_setting("drive_url", "")}
+    manual = clean_path(os.environ.get("FORGE_DRIVE_DIR") or db.get_setting("drive_dir", "") or "")
+    return {"dir": t, "ok": bool(t) and Path(t).is_dir(), "auto": bool(t) and not manual,
+            "last": db.get_setting("drive_last", {}), "url": db.get_setting("drive_url", "")}
 
 
 def mirror(local: Path, old_name: str | None = None, log: list | None = None) -> str | None:
@@ -52,6 +98,16 @@ def mirror(local: Path, old_name: str | None = None, log: list | None = None) ->
     if log is not None:
         log.append(f"synced to Drive: {dest}")
     return str(dest)
+
+
+def mirror_now(local: Path, old_name: str | None = None) -> str:
+    """Mirror and return a one-line status for logs / toasts. Never raises."""
+    try:
+        dest = mirror(local, old_name)
+        return f"Drive: synced to {dest}" if dest else "Drive: no folder set (Settings → Google Drive), saved locally only"
+    except Exception as e:  # noqa: BLE001
+        db.set_setting("drive_last", {"at": db.now(), "folder": local.name, "error": str(e)})
+        return f"Drive: FAILED: {e}"
 
 
 def mirror_async(local: Path, old_name: str | None = None) -> None:

@@ -29,8 +29,10 @@ Target folder: https://drive.google.com/drive/u/3/folders/1AN5OfgzF5JZO23Gh9Cx9t
 
 1. Drive for desktop signed in with the account that owns that folder (it's on your `u/3` account).
    If it was shared with you, open it in Drive → **Add shortcut to Drive** so it shows under My Drive.
-2. Settings → **Google Drive** → paste its local path, e.g. `G:\My Drive\Infamazing\FORGE` → Save.
-3. **Sync all now** copies anything made before you set it.
+2. Leave the path blank and it finds a folder with "infamazing" in its name under My Drive / Shared drives on any
+   Drive-for-desktop letter (each signed-in account gets its own). Otherwise paste its local path in Settings →
+   **Google Drive** (quotes from Explorer's "Copy as path" are fine) → Save. Saving a path copies every existing video.
+3. Every save / script / VO reports `Drive: synced to …`, `no folder set` or `FAILED: …` in the log and Save toast.
 
 Every save mirrors the video's folder. Retitling a video renames the folder (and the title-named files) locally and in Drive.
 Files you add yourself in Drive (edits, thumbnails) are never touched.
