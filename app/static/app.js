@@ -94,7 +94,10 @@ async function loadIdeas() {
     const o = $(".i-open", tr); if (o) o.onclick = (e) => { e.preventDefault(); openVideo(+o.dataset.v); };
   });
   fillRefChecklist("#gen-refs", $("#gen-refq").value);
-  if (!$("#ol-links").value) { const st = await api("/settings"); S.settings = st; $("#ol-links").value = st.competitors || ""; }
+  if (!$("#ol-links").value || !$("#fc-mine").value) {
+    const st = await api("/settings"); S.settings = st;
+    $("#ol-links").value ||= st.competitors || ""; $("#fc-mine").value ||= st.my_channel || ""; $("#fc-aud").value ||= st.audience_channels || "";
+  }
 }
 $("#ideas-all").onchange = loadIdeas;
 $("#ideas-pickall").onchange = (e) => $$(".ipick:not(:disabled)").forEach((c) => c.checked = e.target.checked);
@@ -117,10 +120,37 @@ $("#ol-go").onclick = guard(async () => {
     <div class="meta"><b>${v.multiple}×</b> · ${v.views.toLocaleString()} · ${v.age_days}d</div><div class="yt">${esc(v.channel)}</div></div>`).join("") || `<span class="muted">no outliers found</span>`;
   $$("#ol-tiles .tile").forEach((t) => t.onclick = () => t.classList.toggle("on"));
 });
+// ---------- competitor channel finder
+const num = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? Math.round(n / 1e3) + "K" : String(n || 0);
+$("#fc-go").onclick = guard(async () => {
+  const {task} = await post("/channels/find", {my_channel: $("#fc-mine").value.trim(), seed_links: $("#fc-seeds").value, audience: $("#fc-aud").value,
+    use_competitors: $("#fc-snow").checked, per_channel: +$("#fc-n").value, use_search: $("#fc-search").checked});
+  const r = await waitTask(task, $("#ideas-log"), $("#fc-go"));
+  const have = new Set(($("#ol-links").value || "").split("\n").map((x) => x.trim()));
+  $("#fc-res").classList.remove("hidden");
+  $("#fc-table tbody").innerHTML = r.channels.map((c, i) => `<tr data-url="${esc(c.url)}" class="${i < 8 ? "on" : ""}" style="cursor:pointer">
+    <td><input type="checkbox" class="fcpick" ${i < 8 && !have.has(c.url) ? "checked" : ""}></td>
+    <td><img class="thumb" style="width:28px;height:28px;border-radius:50%;vertical-align:middle" src="${esc(c.thumb)}"> <a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title)}</a> <span class="muted small">${esc(c.handle || "")}</span></td>
+    <td><b>${c.score}</b></td>
+    <td class="small">${Object.entries(c.counts).map(([k, n]) => `<span class="pill ${k === "audience" ? "new" : k === "autoplay" ? "ok" : ""}">${k} ×${n}</span>`).join("")}<br><span class="muted">${c.seeds} seed(s)</span></td>
+    <td>${num(c.subs)}</td><td>${num(c.median_views)}</td><td>${c.shorts}</td><td>${c.last_days == null ? "—" : c.last_days + "d"}</td>
+    <td class="clip small" title="${esc(c.samples.join(" | "))}">${esc(c.samples[0] || "")}</td></tr>`).join("") || `<tr><td colspan="9" class="muted">nothing found: try more seeds or paste your audience list</td></tr>`;
+  $$("#fc-table tbody tr[data-url]").forEach((tr) => tr.onclick = (e) => { if (e.target.tagName !== "A" && e.target.tagName !== "INPUT") $(".fcpick", tr).click(); });
+});
+async function addPicked() {
+  const links = $$("#fc-table .fcpick:checked").map((c) => c.closest("tr").dataset.url);
+  if (!links.length) { toast("pick some channels"); return false; }
+  const r = await post("/channels/add", {links});
+  $("#ol-links").value = r.competitors.join("\n"); toast(`${r.added} channel(s) added to competitors`);
+  return true;
+}
+$("#fc-add").onclick = guard(addPicked);
+$("#fc-add-ol").onclick = guard(async () => { if (await addPicked()) $("#ol-go").click(); });
+
 $("#bend-go").onclick = guard(async () => {
   const videos = $$("#ol-tiles .tile.on").map((t) => S.outliers[+t.dataset.i]);
   if (!videos.length) return toast("pick some outliers");
-  const {task} = await post("/ideas/bend", {videos, count: +$("#bend-n").value, direction: $("#bs-dir").value, check: $("#bs-check").checked, llm_model: $("#gen-llm").value});
+  const {task} = await post("/ideas/bend", {videos, mode: $("#bend-mode").value, count: +$("#bend-n").value, direction: $("#bs-dir").value, check: $("#bs-check").checked, llm_model: $("#gen-llm").value});
   await waitTask(task, $("#ideas-log"), $("#bend-go")); loadIdeas();
 });
 $("#gen-go").onclick = guard(async () => {

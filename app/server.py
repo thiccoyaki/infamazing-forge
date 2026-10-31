@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from forge import config as C, db, drive, ideas, llm, output, scripts, vo, yt, ytref
+from forge import channels, config as C, db, drive, ideas, llm, output, scripts, vo, yt, ytref
 
 app = FastAPI(title="infamazing-forge")
 
@@ -80,7 +80,7 @@ def health():
             "llm_models": C.LLM_MODELS, "default_llm": db.get_setting("default_llm", C.DEFAULT_LLM_MODEL)}
 
 
-SETTING_KEYS = ("drive_dir", "drive_url", "default_format", "default_llm", "yt_api_key", "competitors",
+SETTING_KEYS = ("my_channel", "drive_dir", "drive_url", "default_format", "default_llm", "yt_api_key", "competitors", "audience_channels",
                 "default_voice", "voice_settings", "deadair")
 
 
@@ -244,6 +244,7 @@ def find_outliers(b: Outliers):
 
 class Bend(BaseModel):
     videos: list[dict]
+    mode: str = "adapt"           # adapt = their topic in our structure, bend = new topic with their hook DNA
     count: int = 10
     direction: str = ""
     check: bool = False
@@ -252,7 +253,38 @@ class Bend(BaseModel):
 
 @app.post("/api/ideas/bend")
 def bend(b: Bend):
-    return {"task": run_task(lambda log: {"ideas": ideas.from_outliers(b.videos, b.count, b.direction, b.check, b.llm_model, log)})}
+    return {"task": run_task(lambda log: {"ideas": ideas.from_outliers(b.videos, b.count, b.direction, b.check, b.llm_model, log, b.mode)})}
+
+
+class FindChannels(BaseModel):
+    my_channel: str = ""
+    seed_links: str = ""          # extra seed videos (yours or ones your viewers love)
+    audience: str = ""            # pasted from Studio > Audience > "Channels your audience watches"
+    use_competitors: bool = True  # snowball: also look at what plays after your competitors' best Shorts
+    per_channel: int = 8
+    use_search: bool = True
+
+
+@app.post("/api/channels/find")
+def find_channels(b: FindChannels):
+    if b.my_channel:
+        db.set_setting("my_channel", b.my_channel)
+    if b.audience:
+        db.set_setting("audience_channels", b.audience)
+    return {"task": run_task(lambda log: channels.find(b.my_channel, b.seed_links, b.audience, channels.saved_competitors(),
+                                                       b.use_competitors, b.per_channel, b.use_search, log))}
+
+
+class AddCompetitors(BaseModel):
+    links: list[str]
+
+
+@app.post("/api/channels/add")
+def add_competitors(b: AddCompetitors):
+    have = channels.saved_competitors()
+    new = [x for x in b.links if x not in have]
+    db.set_setting("competitors", "\n".join(have + new))
+    return {"added": len(new), "competitors": have + new}
 
 
 # ---------- videos

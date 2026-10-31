@@ -182,3 +182,5 @@ nav .short{display:none}
 #ideas-table select{max-width:240px}
 #ve-script{min-height:260px;font-family:system-ui,Segoe UI,sans-serif;font-size:15px;line-height:1.6;word-break:break-word}
 #ve-refs .row a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%}
+#fc-panel label.inline{white-space:normal;margin:4px 0}
+#fc-table tr.on td{background:#1d1a10}

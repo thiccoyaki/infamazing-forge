@@ -50,10 +50,37 @@
         <div class="row"><button id="mi-go">Add ideas</button></div>
       </div>
     </div>
+    <details class="panel" id="fc-panel">
+      <summary>Find competitor channels <span class="muted small">from what plays after your Shorts + what your audience watches</span></summary>
+      <div class="cols3" style="margin-top:8px">
+        <div>
+          <label>Your channel (seeds = its best recent Shorts)</label><input id="fc-mine" placeholder="https://www.youtube.com/@infamazing">
+          <div class="row"><label class="inline">top <input id="fc-n" type="number" value="8" min="1" max="25" style="width:60px"> Shorts</label></div>
+          <label>Extra seed videos (optional, one per line)</label><textarea id="fc-seeds" rows="3" placeholder="Shorts your viewers love, yours or anyone's"></textarea>
+        </div>
+        <div>
+          <label>"Channels your audience watches" <span class="muted">(YouTube Studio → Analytics → Audience, paste names or links)</span></label>
+          <textarea id="fc-aud" rows="6"></textarea>
+        </div>
+        <div>
+          <label class="inline"><input id="fc-snow" type="checkbox" checked> also check what plays after your current competitors' best Shorts</label>
+          <label class="inline"><input id="fc-search" type="checkbox" checked> + Shorts on the same topics (YouTube search)</label>
+          <div class="small muted" style="margin:8px 0">Uses your YouTube API key. Scored by how often a channel shows up, from how many different seeds, its Shorts views, and whether it's Shorts-first and active.</div>
+          <button class="primary" id="fc-go">Find channels</button>
+        </div>
+      </div>
+      <div id="fc-res" class="hidden">
+        <div class="row"><b>Suggested channels</b><span class="muted small">click to pick</span><span class="spacer"></span>
+          <button id="fc-add">Add picked to competitors</button><button class="primary" id="fc-add-ol">Add + find outliers</button></div>
+        <table class="grid" id="fc-table"><thead><tr><th></th><th>Channel</th><th>Score</th><th>Found via</th><th>Subs</th><th>Shorts median</th><th>Shorts / last 30</th><th>Last upload</th><th>Example</th></tr></thead><tbody></tbody></table>
+      </div>
+    </details>
+
     <div id="ol-panel" class="panel hidden">
-      <div class="row"><b>Outliers</b><span class="muted small">click to pick, then bend them into Infamazing ideas</span><span class="spacer"></span>
+      <div class="row"><b>Outliers</b><span class="muted small">click to pick, then turn them into Infamazing ideas</span><span class="spacer"></span>
+        <select id="bend-mode" style="width:auto;flex:none"><option value="adapt">Their topic, our structure</option><option value="bend">New topic, their hook DNA</option></select>
         <label class="inline">ideas <input id="bend-n" type="number" value="10" style="width:60px"></label>
-        <button class="primary" id="bend-go">Bend picked into ideas</button></div>
+        <button class="primary" id="bend-go">Turn picked into ideas</button></div>
       <div id="ol-tiles" class="tiles"></div>
     </div>
     <pre id="ideas-log" class="log hidden"></pre>

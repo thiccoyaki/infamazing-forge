@@ -29,15 +29,25 @@ Reply with JSON only: {"ideas": [{"title": "...", "angle": "...", "format": "...
     return _save(data, "brainstorm", log)
 
 
-def from_outliers(videos: list[dict], count: int, direction: str, check: bool, llm_model: str, log: list) -> list[dict]:
+MODES = {
+    "adapt": """ADAPT these proven outlier Shorts from other channels: keep each one's TRUE story / topic, research
+what actually happened, and re-pitch it as an Infamazing Short in OUR structure (pick the best of our formats).
+Find our own angle: the most surprising verified fact, a superlative, a "which came first" or a reveal. The title
+must be ours, never theirs. Skip any whose story we've already covered.""",
+    "bend": """NICHE-BEND these proven outlier Shorts from other channels: name why each one worked (hook mechanism,
+curiosity gap, emotional payoff), keep that DNA, and swap the subject to a DIFFERENT true story that fits Infamazing.
+Never copy their topic.""",
+}
+
+
+def from_outliers(videos: list[dict], count: int, direction: str, check: bool, llm_model: str, log: list,
+                  mode: str = "adapt") -> list[dict]:
     src = "\n".join(f"[{i}] \"{v['title']}\" ({v['channel']}, {v['views']:,} views, {v['multiple']}x channel median)"
                     for i, v in enumerate(videos))
-    log.append(f"bending {len(videos)} outlier(s) into {count} ideas…")
+    log.append(f"{'adapting' if mode == 'adapt' else 'bending'} {len(videos)} outlier(s) into {count} ideas…")
     prompt = _common(count, direction, check) + f"""
 
-Use NICHE BENDING on these proven outlier Shorts from other channels: name why each one worked (hook mechanism,
-curiosity gap, emotional payoff), keep that DNA, and swap the subject to a DIFFERENT true story that fits Infamazing.
-Never copy their topic.
+{MODES.get(mode, MODES['adapt'])}
 
 Outliers:
 {src}
@@ -47,7 +57,7 @@ Reply with JSON only: {{"ideas": [{{"title": "...", "angle": "...", "format": ".
     for it in (data.get("ideas", []) if isinstance(data, dict) else []):
         try:
             v = videos[int(it.get("source"))]
-            it["src"] = f"outlier: {v['title']} ({v['channel']}, {v['multiple']}x) {v['url']}"
+            it["src"] = f"{mode}: {v['title']} ({v['channel']}, {v['multiple']}x) {v['url']}"
         except (TypeError, ValueError, IndexError):
             pass
     return _save(data, "outliers", log)
