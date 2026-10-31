@@ -3,6 +3,7 @@
 Signals, strongest first:
   audience  channels you paste from YouTube Studio > Analytics > Audience > "Channels your audience watches"
   autoplay  the Up next / autoplay list YouTube shows beside your best Shorts (and your competitors' Shorts)
+  script    channels with Shorts on the same story as your latest scripts (their top results also become autoplay seeds)
   search    Shorts YouTube returns for the topics of those seeds (backup when the watch page is thin)
 Every channel found is scored by how often it shows up, how many different seeds lead to it, and how its recent
 Shorts perform. Runs on your PC (watch pages are fetched like a logged-out browser; the rest is the YouTube API)."""
@@ -19,7 +20,7 @@ from . import db, yt
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
       "Chrome/130.0 Safari/537.36")
-WEIGHT = {"audience": 4, "autoplay": 2, "search": 1}
+WEIGHT = {"audience": 4, "script": 2, "autoplay": 2, "search": 1}
 VID = re.compile(r'"videoId":\s*"([\w-]{11})"')
 
 
@@ -104,8 +105,19 @@ def resolve_names(lines: list[str], log: list) -> list[tuple[str, str]]:
 
 # ---------- main
 
+def latest_script_titles(n: int) -> list[str]:
+    """Your newest scripts: videos made in the app first, then past scripts in the reference library."""
+    titles = [v["title"] for v in db.list_videos()]
+    titles += [r["title"] for r in db.list_refs() if r["source"] in ("past", "csv") and r["title"] not in titles]
+    return titles[:n]
+
+
+def _query(title: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"[#@]\S+|[^\w\s']", " ", title)).strip()
+
+
 def find(my_channel: str, seed_links: str, audience: str, competitors: list[str], use_competitors: bool,
-         per_channel: int, use_search: bool, log: list) -> dict:
+         per_channel: int, use_search: bool, log: list, scripts_n: int = 0) -> dict:
     hits: dict[str, dict] = {}
     exclude = set()
 
@@ -125,7 +137,7 @@ def find(my_channel: str, seed_links: str, audience: str, competitors: list[str]
             mine = yt.channel_id(my_channel)
             exclude.add(mine[0])
             log.append(f"seeds: top {per_channel} Shorts of {mine[1]}")
-            seeds += top_shorts(my_channel, per_channel, log)
+            seeds += [dict(v, own=True) for v in top_shorts(my_channel, per_channel, log)]
         except Exception as e:  # noqa: BLE001
             log.append(f"your channel: {e}")
     pasted = video_ids(seed_links)
@@ -145,6 +157,29 @@ def find(my_channel: str, seed_links: str, audience: str, competitors: list[str]
         except Exception:  # noqa: BLE001
             pass
 
+    # your latest scripts: who already has Shorts on the same stories, and what plays after the best of them
+    if scripts_n:
+        titles = latest_script_titles(scripts_n)
+        log.append(f"scripts: searching Shorts for your latest {len(titles)} script(s)")
+        for t in titles:
+            q = _query(t)
+            if not q:
+                continue
+            try:
+                items = yt.get("search", {"part": "snippet", "q": q, "type": "video", "videoDuration": "short",
+                                          "order": "relevance", "maxResults": 10}).get("items", [])
+            except Exception as e:  # noqa: BLE001
+                log.append(f"  search failed: {e}")
+                break
+            for it in items:
+                sn = it["snippet"]
+                hit(sn["channelId"], sn["channelTitle"], "script", t, sn["title"])
+            seeds += [{"id": it["id"]["videoId"], "title": it["snippet"]["title"], "channel": it["snippet"]["channelTitle"]}
+                      for it in items[:2] if it["snippet"]["channelId"] not in exclude]
+
+    seen = set()
+    seeds = [x for x in seeds if not (x["id"] in seen or seen.add(x["id"]))]
+
     # autoplay
     auto_ids: dict[str, str] = {}
     for n, s in enumerate(seeds, 1):
@@ -161,8 +196,8 @@ def find(my_channel: str, seed_links: str, audience: str, competitors: list[str]
 
     # search backup: Shorts on the same topics as your seeds
     if use_search:
-        for s in seeds[:per_channel]:
-            q = re.sub(r"[#@]\S+|[^\w\s']", " ", s["title"]).strip()
+        for s in [x for x in seeds if x.get("own")][:per_channel] or seeds[:per_channel]:
+            q = _query(s["title"])
             if not q:
                 continue
             try:

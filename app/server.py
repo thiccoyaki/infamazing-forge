@@ -263,6 +263,7 @@ class FindChannels(BaseModel):
     use_competitors: bool = True  # snowball: also look at what plays after your competitors' best Shorts
     per_channel: int = 8
     use_search: bool = True
+    scripts_n: int = 10           # start from your latest N scripts (0 = off)
 
 
 @app.post("/api/channels/find")
@@ -272,7 +273,7 @@ def find_channels(b: FindChannels):
     if b.audience:
         db.set_setting("audience_channels", b.audience)
     return {"task": run_task(lambda log: channels.find(b.my_channel, b.seed_links, b.audience, channels.saved_competitors(),
-                                                       b.use_competitors, b.per_channel, b.use_search, log))}
+                                                       b.use_competitors, b.per_channel, b.use_search, log, b.scripts_n))}
 
 
 class AddCompetitors(BaseModel):

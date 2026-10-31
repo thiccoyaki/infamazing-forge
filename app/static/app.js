@@ -124,7 +124,7 @@ $("#ol-go").onclick = guard(async () => {
 const num = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? Math.round(n / 1e3) + "K" : String(n || 0);
 $("#fc-go").onclick = guard(async () => {
   const {task} = await post("/channels/find", {my_channel: $("#fc-mine").value.trim(), seed_links: $("#fc-seeds").value, audience: $("#fc-aud").value,
-    use_competitors: $("#fc-snow").checked, per_channel: +$("#fc-n").value, use_search: $("#fc-search").checked});
+    use_competitors: $("#fc-snow").checked, per_channel: +$("#fc-n").value, scripts_n: +$("#fc-scripts").value, use_search: $("#fc-search").checked});
   const r = await waitTask(task, $("#ideas-log"), $("#fc-go"));
   const have = new Set(($("#ol-links").value || "").split("\n").map((x) => x.trim()));
   $("#fc-res").classList.remove("hidden");
@@ -132,7 +132,7 @@ $("#fc-go").onclick = guard(async () => {
     <td><input type="checkbox" class="fcpick" ${i < 8 && !have.has(c.url) ? "checked" : ""}></td>
     <td><img class="thumb" style="width:28px;height:28px;border-radius:50%;vertical-align:middle" src="${esc(c.thumb)}"> <a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title)}</a> <span class="muted small">${esc(c.handle || "")}</span></td>
     <td><b>${c.score}</b></td>
-    <td class="small">${Object.entries(c.counts).map(([k, n]) => `<span class="pill ${k === "audience" ? "new" : k === "autoplay" ? "ok" : ""}">${k} ×${n}</span>`).join("")}<br><span class="muted">${c.seeds} seed(s)</span></td>
+    <td class="small">${Object.entries(c.counts).map(([k, n]) => `<span class="pill ${k === "audience" ? "new" : k === "autoplay" || k === "script" ? "ok" : ""}">${k} ×${n}</span>`).join("")}<br><span class="muted">${c.seeds} seed(s)</span></td>
     <td>${num(c.subs)}</td><td>${num(c.median_views)}</td><td>${c.shorts}</td><td>${c.last_days == null ? "—" : c.last_days + "d"}</td>
     <td class="clip small" title="${esc(c.samples.join(" | "))}">${esc(c.samples[0] || "")}</td></tr>`).join("") || `<tr><td colspan="9" class="muted">nothing found: try more seeds or paste your audience list</td></tr>`;
   $$("#fc-table tbody tr[data-url]").forEach((tr) => tr.onclick = (e) => { if (e.target.tagName !== "A" && e.target.tagName !== "INPUT") $(".fcpick", tr).click(); });

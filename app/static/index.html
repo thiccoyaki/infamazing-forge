@@ -54,8 +54,10 @@
       <summary>Find competitor channels <span class="muted small">from what plays after your Shorts + what your audience watches</span></summary>
       <div class="cols3" style="margin-top:8px">
         <div>
-          <label>Your channel (seeds = its best recent Shorts)</label><input id="fc-mine" placeholder="https://www.youtube.com/@infamazing">
-          <div class="row"><label class="inline">top <input id="fc-n" type="number" value="8" min="1" max="25" style="width:60px"> Shorts</label></div>
+          <label>Your channel (seeds = its best recent Shorts, optional)</label><input id="fc-mine" placeholder="https://www.youtube.com/@infamazing">
+          <div class="row"><label class="inline">top <input id="fc-n" type="number" value="8" min="0" max="25" style="width:60px"> Shorts</label></div>
+          <div class="row"><label class="inline">+ your latest <input id="fc-scripts" type="number" value="10" min="0" max="50" style="width:60px"> scripts</label></div>
+          <div class="small muted">Finds who already has Shorts on the same stories, then what plays after them.</div>
           <label>Extra seed videos (optional, one per line)</label><textarea id="fc-seeds" rows="3" placeholder="Shorts your viewers love, yours or anyone's"></textarea>
         </div>
         <div>
