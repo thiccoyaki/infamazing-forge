@@ -325,7 +325,7 @@ def _hash(t: str) -> str:
 
 @app.get("/api/videos")
 def list_videos():
-    return {"videos": [_view(v) for v in db.list_videos()]}
+    return {"videos": [_view(v) for v in db.list_videos()], "statuses": STATUSES}
 
 
 @app.get("/api/videos/{vid}")
@@ -388,7 +388,7 @@ def update_video(vid: int, body: dict):
     v = db.get_video(vid)
     if not v:
         raise HTTPException(404)
-    allowed = {k: body[k] for k in ("title", "script", "format", "refs", "facts", "notes", "status", "topic") if k in body}
+    allowed = {k: body[k] for k in ("title", "script", "format", "refs", "facts", "notes", "topic") if k in body}
     if "title" in allowed:
         allowed["title"] = " ".join(str(allowed["title"]).split())[:100] or v["title"]
     db.update_video(vid, **allowed)
@@ -479,14 +479,24 @@ def vo_batch(b: Ids):
     return {"task": run_task(work)}
 
 
-@app.post("/api/videos/{vid}/done")
-def mark_done(vid: int):
-    """Finished: the script joins the reference library as a past script, so future scripts learn from it."""
+STATUSES = ["draft", "vo", "in progress", "live"]  # vo = VO ready
+
+
+class StatusBody(BaseModel):
+    status: str
+
+
+@app.put("/api/videos/{vid}/status")
+def set_status(vid: int, b: StatusBody):
+    """Live = published: the script joins the reference library as a past script, so future scripts learn from it."""
     v = db.get_video(vid)
     if not v:
         raise HTTPException(404)
-    db.update_video(vid, status="done")
-    db.add_ref(v["title"], v["script"], format=v["format"], source="past", video_id=vid)
+    if b.status not in STATUSES:
+        raise HTTPException(400, f"status must be one of {STATUSES}")
+    db.update_video(vid, touch=False, status=b.status)
+    if b.status == "live":
+        db.add_ref(v["title"], v["script"], format=v["format"], source="past", video_id=vid)
     output.write(vid)
     return {"ok": True}
 

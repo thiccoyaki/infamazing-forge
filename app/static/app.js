@@ -175,19 +175,31 @@ $("#gen-go").onclick = guard(async () => {
 // ---------- videos list
 async function loadVideos() {
   $("#vedit").classList.add("hidden"); $("#vlist").classList.remove("hidden");
-  const {videos} = await api("/videos");
+  const {videos, statuses} = await api("/videos");
+  S.statuses = statuses;
+  const sf = $("#v-sfilter");
+  if (sf.options.length === 1) sf.innerHTML += statuses.map((x) => `<option value="${x}">${STATUS_LABEL[x]}</option>`).join("");
   const q = ($("#v-filter").value || "").toLowerCase();
-  const rows = videos.filter((v) => !q || (v.title + v.topic).toLowerCase().includes(q));
+  const rows = videos.filter((v) => (!q || (v.title + v.topic).toLowerCase().includes(q)) && (!sf.value || v.status === sf.value));
   $("#v-count").textContent = `${rows.length} video(s)`;
   $("#v-table tbody").innerHTML = rows.map((v) => {
     const [fl, fc] = FSTATE[v.folder_state];
     return `<tr><td><input type="checkbox" class="vpick" value="${v.id}"></td>
     <td><a href="#" data-v="${v.id}">${esc(v.title)}</a></td><td>${esc(fmtName(v.format))}</td><td>${v.chars}</td>
     <td>${v.vo_seconds ? fmtS(v.vo_seconds) + (v.vo_stale ? ' <span class="pill warn">stale</span>' : "") : "—"}</td>
-    <td>${v.refs.length}</td><td class="status-${v.status}">${v.status}</td><td><span class="fstate ${fc}">${fl}</span></td><td>${when(v.updated_at)}</td></tr>`;
+    <td>${v.refs.length}</td><td>${statusSelect(v.status, `data-sv="${v.id}"`)}</td><td><span class="fstate ${fc}">${fl}</span></td><td>${when(v.updated_at)}</td></tr>`;
   }).join("") || `<tr><td colspan="9" class="muted">no videos yet: pick ideas and hit "Write scripts"</td></tr>`;
   $$("#v-table a[data-v]").forEach((a) => a.onclick = (e) => { e.preventDefault(); openVideo(+a.dataset.v); });
+  $$("#v-table select[data-sv]").forEach((sel) => sel.onchange = guard(async () => { await setStatus(+sel.dataset.sv, sel.value); loadVideos(); }));
 }
+const STATUS_LABEL = {draft: "Draft", vo: "VO ready", "in progress": "In progress", live: "Live"};
+const statusSelect = (cur, attrs = "") => `<select ${attrs} class="status-sel st-${cur.replace(" ", "-")}" style="width:auto">${(S.statuses || Object.keys(STATUS_LABEL))
+  .map((x) => `<option value="${x}" ${x === cur ? "selected" : ""}>${STATUS_LABEL[x] || x}</option>`).join("")}</select>`;
+async function setStatus(id, status) {
+  await put(`/videos/${id}/status`, {status});
+  if (status === "live") { S.refs = []; toast("live: script added to past scripts"); }
+}
+$("#v-sfilter").onchange = loadVideos;
 $("#v-filter").oninput = loadVideos;
 $("#v-pickall").onchange = (e) => $$(".vpick").forEach((c) => c.checked = e.target.checked);
 $("#v-vo-batch").onclick = guard(async () => {
@@ -210,10 +222,12 @@ function renderVideo() {
   const v = S.video;
   const [fl, fc] = FSTATE[v.folder_state];
   $("#ve-folder").textContent = fl; $("#ve-folder").className = "fstate " + fc;
+  $("#ve-status").outerHTML = statusSelect(v.status, 'id="ve-status" title="live = published: the script joins past scripts"');
+  $("#ve-status").onchange = guard(async (e) => { const st = e.target.value; await saveVideo(); await setStatus(v.id, st); S.video = await api(`/videos/${v.id}`); renderVideo(); });
   const f = S.formats.find((x) => x.id === $("#ve-fmt").value);
   const n = $("#ve-script").value.trim().length;
   const ok = !f || (n >= f.min_chars && n <= f.max_chars);
-  $("#ve-stats").innerHTML = `<b class="${ok ? "pass" : "fail"}">${n} chars</b>${f ? ` (${f.min_chars}-${f.max_chars})` : ""} · ~${fmtS(n / (v.chars / Math.max(v.est_seconds, 1) || 17))} VO · ${v.status}`;
+  $("#ve-stats").innerHTML = `<b class="${ok ? "pass" : "fail"}">${n} chars</b>${f ? ` (${f.min_chars}-${f.max_chars})` : ""} · ~${fmtS(n / (v.chars / Math.max(v.est_seconds, 1) || 17))} VO · ${STATUS_LABEL[v.status] || v.status}`;
   $("#ve-refs").innerHTML = v.refs.map((r, i) => `<div class="row small"><span class="pill ${r.kind === "youtube" || /youtu/.test(r.url) ? "new" : ""}">${r.kind === "youtube" || /youtu/.test(r.url) ? "YT" : "web"}</span>
     <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title || r.url)}</a><span class="spacer"></span><button class="danger" data-i="${i}">✕</button></div>`).join("") || `<div class="muted small">none</div>`;
   $$("#ve-refs button").forEach((b) => b.onclick = guard(async () => { v.refs.splice(+b.dataset.i, 1); await saveVideo({refs: v.refs}); }));
@@ -233,7 +247,6 @@ $("#ve-script").oninput = () => { renderVideo(); $("#ve-folder").textContent = "
 $("#ve-fmt").onchange = renderVideo;
 $("#ve-save").onclick = guard(async () => { await saveVideo(); toast(S.lastDrive.startsWith("Drive: synced") ? "saved locally + Drive" : "saved locally. " + S.lastDrive, 6000); });
 $("#ve-open").onclick = guard(() => post(`/videos/${S.video.id}/open`));
-$("#ve-done").onclick = guard(async () => { await saveVideo(); await post(`/videos/${S.video.id}/done`); S.refs = []; S.video = await api(`/videos/${S.video.id}`); renderVideo(); toast("done: added to past scripts"); });
 $("#ve-del").onclick = guard(async () => { if (!confirm("Delete from the app? (the folder stays on disk / Drive)")) return; await del(`/videos/${S.video.id}`); loadVideos(); });
 $("#ve-ref-add").onclick = guard(async () => {
   const url = $("#ve-ref-url").value.trim(); if (!url) return;

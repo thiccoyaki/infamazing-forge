@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS videos (
   vo_seconds REAL,
   vo_raw_seconds REAL,
   vo_hash TEXT NOT NULL DEFAULT '',
-  status TEXT NOT NULL DEFAULT 'draft',    -- draft | vo | done
+  status TEXT NOT NULL DEFAULT 'draft',    -- draft | vo | in progress | live
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   packaged_at TEXT,
@@ -77,6 +77,7 @@ def conn():
 def init() -> None:
     with conn() as c:
         c.executescript(SCHEMA)
+        c.execute("UPDATE videos SET status='live' WHERE status='done'")  # old "Mark done" = published
 
 
 JSON_COLS = {"refs", "facts", "style_refs"}

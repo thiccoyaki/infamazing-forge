@@ -184,3 +184,5 @@ nav .short{display:none}
 #ve-refs .row a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%}
 #fc-panel label.inline{white-space:normal;margin:4px 0}
 #fc-table tr.on td{background:#1d1a10}
+select.status-sel{padding:3px 6px;font-size:12px;font-weight:600}
+.st-draft{color:var(--muted)}.st-vo{color:#5aa9e6}.st-in-progress{color:var(--accent)}.st-live{color:var(--ok)}

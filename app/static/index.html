@@ -110,7 +110,7 @@
   <!-- ======== 2. Videos ======== -->
   <section id="view-videos" class="view">
     <div id="vlist">
-      <div class="toolbar"><input id="v-filter" placeholder="filter…"><span id="v-count" class="muted"></span><span class="spacer"></span>
+      <div class="toolbar"><input id="v-filter" placeholder="filter…"><select id="v-sfilter" style="width:auto"><option value="">all statuses</option></select><span id="v-count" class="muted"></span><span class="spacer"></span>
         <button id="v-vo-batch">VO for picked</button></div>
       <table class="grid" id="v-table"><thead><tr><th><input type="checkbox" id="v-pickall"></th><th>Title</th><th>Format</th><th>Chars</th><th>VO</th><th>Refs</th><th>Status</th><th>Folder</th><th>Updated</th></tr></thead><tbody></tbody></table>
       <pre id="v-log" class="log hidden"></pre>
@@ -124,7 +124,7 @@
         <span class="spacer"></span>
         <button id="ve-save" class="primary">Save</button>
         <button id="ve-open">Open folder</button>
-        <button id="ve-done">Mark done</button>
+        <select id="ve-status" style="width:auto" title="live = published: the script joins past scripts"></select>
         <button id="ve-del" class="danger">Delete</button>
       </div>
       <div class="cols" style="margin-top:10px">
