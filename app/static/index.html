@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>infamazing-forge</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1e23">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div class="brand">infamazing-forge</div>
+  <nav>
+    <button data-view="ideas" class="active"><i>✦</i>Ideas</button>
+    <button data-view="videos"><i>▤</i>Videos</button>
+    <button data-view="refs"><i>❝</i><span class="full">References</span><span class="short">Refs</span></button>
+    <button data-view="formats"><i>≡</i>Formats</button>
+    <button data-view="settings"><i>⚙</i>Settings</button>
+  </nav>
+  <div id="health" class="health"></div>
+</header>
+
+<main>
+  <!-- ======== 1. Ideas ======== -->
+  <section id="view-ideas" class="view active">
+    <div class="cards">
+      <div class="panel">
+        <h3>Brainstorm</h3>
+        <label>Direction (optional)</label>
+        <textarea id="bs-dir" rows="3" placeholder="e.g. fast food brand blunders, 90s toys, which came first…"></textarea>
+        <div class="row"><label class="inline">How many <input id="bs-n" type="number" value="10" min="1" max="40" style="width:70px"></label>
+          <label class="inline"><input id="bs-check" type="checkbox"> verify premises (slower)</label></div>
+        <button class="primary" id="bs-go">Generate ideas</button>
+      </div>
+      <div class="panel">
+        <h3>From competitor outliers</h3>
+        <label>Channels (URL, @handle or any of their videos), one per line</label>
+        <textarea id="ol-links" rows="3" placeholder="https://www.youtube.com/@HistoricFoods"></textarea>
+        <div class="row"><label class="inline">last <input id="ol-n" type="number" value="50" style="width:70px"> Shorts</label>
+          <label class="inline">≥ <input id="ol-mult" type="number" step="0.5" value="2" style="width:60px">× median</label></div>
+        <button id="ol-go">Find outliers</button>
+      </div>
+      <div class="panel">
+        <h3>Add your own</h3>
+        <label>One per line: <code>title | angle</code> (angle optional)</label>
+        <textarea id="mi-lines" rows="3"></textarea>
+        <label>Format</label><select id="mi-fmt"></select>
+        <div class="row"><button id="mi-go">Add ideas</button></div>
+      </div>
+    </div>
+    <div id="ol-panel" class="panel hidden">
+      <div class="row"><b>Outliers</b><span class="muted small">click to pick, then bend them into Infamazing ideas</span><span class="spacer"></span>
+        <label class="inline">ideas <input id="bend-n" type="number" value="10" style="width:60px"></label>
+        <button class="primary" id="bend-go">Bend picked into ideas</button></div>
+      <div id="ol-tiles" class="tiles"></div>
+    </div>
+    <pre id="ideas-log" class="log hidden"></pre>
+
+    <div class="panel">
+      <div class="row"><b>Idea list</b>
+        <label class="inline"><input id="ideas-all" type="checkbox"> show used / skipped</label>
+        <span class="spacer"></span>
+        <select id="gen-fmt" style="width:auto"></select>
+        <label class="inline"><input id="gen-vo" type="checkbox" checked> + VO</label>
+        <button class="primary" id="gen-go">Write scripts for picked</button></div>
+      <details><summary class="small muted">script options: style references, notes, model</summary>
+        <label>Style references (none picked = latest past scripts of that format)</label>
+        <input class="refq" id="gen-refq" placeholder="search references…">
+        <div id="gen-refs" class="checklist small"></div>
+        <label>Notes for every script in this batch</label><textarea id="gen-notes" rows="2"></textarea>
+        <label>Claude model</label><select id="gen-llm" style="width:auto"></select>
+      </details>
+      <table class="grid" id="ideas-table"><thead><tr><th><input type="checkbox" id="ideas-pickall"></th><th>Title</th><th>Angle</th><th>Format</th><th>Source</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <!-- ======== 2. Videos ======== -->
+  <section id="view-videos" class="view">
+    <div id="vlist">
+      <div class="toolbar"><input id="v-filter" placeholder="filter…"><span id="v-count" class="muted"></span><span class="spacer"></span>
+        <button id="v-vo-batch">VO for picked</button></div>
+      <table class="grid" id="v-table"><thead><tr><th><input type="checkbox" id="v-pickall"></th><th>Title</th><th>Format</th><th>Chars</th><th>VO</th><th>Refs</th><th>Status</th><th>Folder</th><th>Updated</th></tr></thead><tbody></tbody></table>
+      <pre id="v-log" class="log hidden"></pre>
+    </div>
+
+    <div id="vedit" class="hidden">
+      <div class="story-head">
+        <button id="ve-back">←</button>
+        <input id="ve-title" class="title-input" title="SEO title = folder + file name">
+        <span id="ve-folder" class="fstate"></span>
+        <span class="spacer"></span>
+        <button id="ve-save" class="primary">Save</button>
+        <button id="ve-open">Open folder</button>
+        <button id="ve-done">Mark done</button>
+        <button id="ve-del" class="danger">Delete</button>
+      </div>
+      <div class="cols" style="margin-top:10px">
+        <div>
+          <div class="row small muted"><span id="ve-stats"></span><span class="spacer"></span><select id="ve-fmt" style="width:auto"></select></div>
+          <textarea id="ve-script" rows="12"></textarea>
+          <div class="row"><input id="ve-rev" placeholder="revise: e.g. punchier hook, swap the CTA options to sodas…">
+            <label class="inline"><input id="ve-rev-web" type="checkbox"> web</label><button id="ve-rev-go">Revise</button></div>
+          <h4>References <span class="muted small">(go into references.txt)</span></h4>
+          <div id="ve-refs"></div>
+          <div class="row"><input id="ve-ref-title" placeholder="title" style="max-width:240px"><input id="ve-ref-url" placeholder="https://…"><button id="ve-ref-add">Add</button></div>
+          <details><summary class="small muted">verified facts / notes</summary><ul id="ve-facts" class="small"></ul><div id="ve-notes" class="small muted"></div></details>
+        </div>
+        <div class="side">
+          <div class="panel" style="margin-top:0">
+            <h3 style="margin-top:0">VO</h3>
+            <div class="small muted" id="vo-defaults"></div>
+            <label>Voice</label><select id="vo-voice"><option value="">(Kalemod default)</option></select>
+            <details><summary class="small muted">override settings</summary>
+              <label>Model</label><select id="vo-model"></select>
+              <div class="row3"><div><label>Stability</label><input id="vo-stab" type="number" step="0.05"></div>
+                <div><label>Similarity</label><input id="vo-sim" type="number" step="0.05"></div>
+                <div><label>Style</label><input id="vo-style" type="number" step="0.05"></div></div>
+              <div class="row3"><div><label>Speed</label><input id="vo-speed" type="number" step="0.05"></div>
+                <div><label>Min pause</label><input id="vo-minp" type="number" step="0.05"></div>
+                <div><label>Pause to</label><input id="vo-pto" type="number" step="0.01"></div></div>
+              <div class="row"><label class="inline"><input id="vo-pitch" type="checkbox"> pitch follows speed</label>
+                <label class="inline">thr <input id="vo-thr" type="number" style="width:70px"></label></div>
+              <div class="small muted">Changed values become the new defaults.</div>
+            </details>
+            <div class="row"><button class="primary" id="vo-go">Generate VO</button></div>
+            <div id="vo-result"></div>
+          </div>
+          <pre id="ve-log" class="log hidden"></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== 3. References ======== -->
+  <section id="view-refs" class="view">
+    <div class="cards">
+      <div class="panel"><h3>From video links</h3>
+        <textarea id="rl-urls" rows="4" placeholder="Shorts / YouTube links, one per line"></textarea>
+        <label>Format tag</label><select id="rl-fmt"></select>
+        <div class="row"><label class="inline"><input id="rl-tidy" type="checkbox" checked> tidy with Claude</label><button class="primary" id="rl-go">Add</button></div></div>
+      <div class="panel"><h3>Past scripts CSV</h3>
+        <div class="small muted">e.g. infamazing_scripts.csv. Title + script columns are found by name.</div>
+        <input type="file" id="rc-file" accept=".csv">
+        <label>Format tag</label><select id="rc-fmt"></select>
+        <div class="row"><button id="rc-go">Import</button></div></div>
+      <div class="panel"><h3>Paste one</h3>
+        <input id="rp-title" placeholder="title"><textarea id="rp-body" rows="3" placeholder="script text"></textarea>
+        <label>Format tag</label><select id="rp-fmt"></select>
+        <div class="row"><button id="rp-go">Add</button></div></div>
+    </div>
+    <pre id="refs-log" class="log hidden"></pre>
+    <div class="toolbar"><input id="refs-q" placeholder="search…"><span id="refs-count" class="muted"></span></div>
+    <table class="grid" id="refs-table"><thead><tr><th>Title</th><th>Script</th><th>Format</th><th>Source</th><th>Chars</th><th>Last used</th><th></th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <!-- ======== 4. Formats ======== -->
+  <section id="view-formats" class="view">
+    <div class="cols">
+      <div>
+        <div class="row"><select id="fm-pick" style="width:auto"></select><span class="spacer"></span>
+          <button id="fm-default">Make default</button><button id="fm-save" class="primary">Save</button><button id="fm-del" class="danger">Delete</button></div>
+        <textarea id="fm-body" rows="26"></textarea>
+        <div class="small muted">Line 1 <code># Name</code>, line 2 description, a <code>chars: MIN-MAX</code> line, then the structure. <code>_global.md</code> rules (Settings) apply to every format.</div>
+      </div>
+      <div class="side">
+        <div class="panel" style="margin-top:0"><h3 style="margin-top:0">New format</h3>
+          <label>Id</label><input id="nf-id" placeholder="e.g. top-3-countdown">
+          <label>Name</label><input id="nf-name">
+          <div class="row"><button id="nf-blank">Blank</button></div>
+          <label>…or learn it from references</label>
+          <input class="refq" id="nf-refq" placeholder="search references…">
+          <div id="nf-refs" class="checklist small"></div>
+          <label>Notes</label><textarea id="nf-notes" rows="2"></textarea>
+          <div class="row"><button class="primary" id="nf-learn">Learn format</button></div>
+          <pre id="nf-log" class="log hidden"></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== 5. Settings ======== -->
+  <section id="view-settings" class="view">
+    <div class="cards">
+      <div class="panel"><h3>Kalemod VO settings</h3>
+        <div id="set-vo" class="small"></div>
+        <div class="small muted" id="set-sf"></div>
+        <div class="row"><button id="set-import">Re-import from story-forge</button></div></div>
+      <div class="panel"><h3>Google Drive</h3>
+        <label>Drive for desktop path of the folder</label><input id="set-drive" placeholder="G:\My Drive\Infamazing\FORGE">
+        <label>Folder link (for reference)</label><input id="set-drive-url">
+        <div id="set-drive-st" class="small muted"></div>
+        <div class="row"><button id="set-drive-save" class="primary">Save</button><button id="set-drive-all">Sync all now</button></div>
+        <pre id="set-log" class="log hidden"></pre></div>
+      <div class="panel"><h3>Keys</h3>
+        <label>YouTube API key (if not in .env)</label><input id="set-yt" type="password">
+        <label>Default Claude model</label><select id="set-llm"></select>
+        <div class="row"><button id="set-keys">Save</button></div></div>
+    </div>
+    <div class="panel"><h3>Global script rules <span class="muted small">(formats/_global.md)</span></h3>
+      <textarea id="set-global" rows="12"></textarea><div class="row"><button id="set-global-save">Save</button></div></div>
+  </section>
+</main>
+<div id="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
