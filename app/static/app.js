@@ -180,7 +180,7 @@ async function loadVideos() {
   const sf = $("#v-sfilter");
   if (sf.options.length === 1) sf.innerHTML += statuses.map((x) => `<option value="${x}">${STATUS_LABEL[x]}</option>`).join("");
   const q = ($("#v-filter").value || "").toLowerCase();
-  const rows = videos.filter((v) => (!q || (v.title + v.topic).toLowerCase().includes(q)) && (!sf.value || v.status === sf.value));
+  const rows = videos.filter((v) => (!q || [v.title, v.topic, fmtName(v.format), STATUS_LABEL[v.status], v.voice_name, v.folder_state, v.chars].join(" ").toLowerCase().includes(q)) && (!sf.value || v.status === sf.value));
   $("#v-count").textContent = `${rows.length} video(s)`;
   $("#v-table tbody").innerHTML = rows.map((v) => {
     const [fl, fc] = FSTATE[v.folder_state];
