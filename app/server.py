@@ -372,7 +372,10 @@ def generate(b: Generate):
                 log.append(f"  saved: {d} ({len(g['script'])} chars, {len(g['refs'])} refs)")
                 log.append("  " + output.LAST_DRIVE.get(vid, ""))
                 if b.make_vo:
-                    _do_vo(vid, None, log)
+                    try:
+                        _do_vo(vid, None, log)
+                    except Exception as e:  # noqa: BLE001
+                        log.append(f"  VO FAILED: {e}")
                 made.append(vid)
             except Exception as e:  # noqa: BLE001 - one bad topic doesn't stop the batch
                 log.append(f"  failed: {e}")

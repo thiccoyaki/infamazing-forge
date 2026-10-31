@@ -65,7 +65,8 @@ def clean_script(text: str) -> str:
 
 def clean_title(t: str) -> str:
     t = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", (t or "").strip()).strip(". ")
-    return re.sub(r"\s+", " ", t)[:90] or "Untitled"
+    t = re.sub(r"\s+", " ", t)
+    return (t[:70].rsplit(" ", 1)[0] if len(t) > 70 else t).strip(". ") or "Untitled"
 
 
 def style_block(ref_ids: list[int]) -> str:

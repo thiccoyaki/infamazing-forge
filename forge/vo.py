@@ -91,9 +91,21 @@ def make(text: str, raw: Path, clean: Path, voice_id: str, settings: dict, dead:
     d = deadair.Options(min_pause=float(dead["min_pause"]), pause_to=float(dead["pause_to"]),
                         threshold=float(dead.get("threshold", -35.0)), speed=float(dead.get("speed", 1.0)),
                         pitch_shift=bool(dead.get("pitch_shift", False)), hq=bool(dead.get("hq", False)), overwrite=True)
-    r = deadair.process_file(str(raw), str(clean), d)
-    if r.error:
-        raise RuntimeError(r.error)
+    # ffmpeg works on short temp paths, then Python moves the result into place: long Windows paths
+    # (repo path + title folder + title file name) can pass 260 chars, which ffmpeg can't open
+    import shutil
+    import tempfile
+    import uuid
+    tmp = Path(tempfile.gettempdir()) / f"ifr_{uuid.uuid4().hex[:8]}"
+    tmp.mkdir()
+    try:
+        shutil.copyfile(raw, tmp / "raw.mp3")
+        r = deadair.process_file(str(tmp / "raw.mp3"), str(tmp / "clean.mp3"), d)
+        if r.error or not (tmp / "clean.mp3").exists():
+            raise RuntimeError("dead-air cleanup failed: " + (r.error or "no output file")[-1500:])
+        shutil.move(str(tmp / "clean.mp3"), str(clean))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     clean_s = duration_of(clean)
-    log.append(f"clean: {clean_s:.1f}s")
+    log.append(f"clean: {clean_s:.1f}s -> {clean.name}")
     return raw_s, clean_s

@@ -25,7 +25,7 @@ def clean_path(p: str) -> str:
 def detect(force: bool = False) -> str:
     """Find the Infamazing folder in Google Drive for desktop on any drive letter (every signed-in account gets
     its own letter): a folder with "infamazing" in its name under My Drive or Shared drives, up to 3 levels deep.
-    Prefers ones also named forge / scripts / vo."""
+    Prefers the shallowest, then one named exactly "Infamazing" (e.g. H:\\My Drive\\Infamazing)."""
     global _detected
     if _detected is not None and not force:
         return _detected
@@ -52,7 +52,7 @@ def detect(force: bool = False) -> str:
     def rank(x):
         depth, p = x
         n = p.name.lower()
-        return (-sum(k in n for k in ("forge", "script", "vo", "video")), -depth)
+        return (depth, n != "infamazing", -sum(k in n for k in ("forge", "script", "vo", "video")))
     _detected = str(sorted(found, key=rank)[0][1]) if found else ""
     return _detected
 
