@@ -34,6 +34,11 @@ MODES = {
 what actually happened, and re-pitch it as an Infamazing Short in OUR structure (pick the best of our formats).
 Find our own angle: the most surprising verified fact, a superlative, a "which came first" or a reveal. The title
 must be ours, never theirs. Skip any whose story we've already covered.""",
+    "winners": """These are OUR OWN latest Shorts that beat our channel median. For each, work out WHY it won (the
+topic vein, the brand or item, the emotion, the hook, the format). Then pitch follow-ups that ride the same winning
+vein: the same angle on a different brand / item / country, the rival's version ("and Pepsi did it too"), a deeper
+or darker part 2 of the same story, the flip side or opposite superlative, or a "which came first / which is bigger"
+pairing. Every idea must be a NEW true story we haven't covered, and lean hardest on the biggest winners.""",
     "bend": """NICHE-BEND these proven outlier Shorts from other channels: name why each one worked (hook mechanism,
 curiosity gap, emotional payoff), keep that DNA, and swap the subject to a DIFFERENT true story that fits Infamazing.
 Never copy their topic.""",
@@ -43,8 +48,9 @@ Never copy their topic.""",
 def from_outliers(videos: list[dict], count: int, direction: str, check: bool, llm_model: str, log: list,
                   mode: str = "adapt") -> list[dict]:
     src = "\n".join(f"[{i}] \"{v['title']}\" ({v['channel']}, {v['views']:,} views, {v['multiple']}x channel median)"
+                    + (f"\n    our script: {_our_script(v['title'])[:900]}" if mode == "winners" and _our_script(v["title"]) else "")
                     for i, v in enumerate(videos))
-    log.append(f"{'adapting' if mode == 'adapt' else 'bending'} {len(videos)} outlier(s) into {count} ideas…")
+    log.append(f"{ {'adapt': 'adapting', 'winners': 'following up'}.get(mode, 'bending') } {len(videos)} video(s) into {count} ideas…")
     prompt = _common(count, direction, check) + f"""
 
 {MODES.get(mode, MODES['adapt'])}
@@ -60,7 +66,24 @@ Reply with JSON only: {{"ideas": [{{"title": "...", "angle": "...", "format": ".
             it["src"] = f"{mode}: {v['title']} ({v['channel']}, {v['multiple']}x) {v['url']}"
         except (TypeError, ValueError, IndexError):
             pass
-    return _save(data, "outliers", log)
+    return _save(data, "my winners" if mode == "winners" else "outliers", log)
+
+
+def _norm(t: str) -> str:
+    import re
+    return re.sub(r"[^a-z0-9]+", " ", (t or "").lower()).strip()
+
+
+def _our_script(title: str) -> str:
+    """The script behind one of our published Shorts, if it's in the app (matched by title)."""
+    n = _norm(title)
+    for v in db.list_videos():
+        if _norm(v["title"]) == n:
+            return v["script"]
+    for r in db.list_refs():
+        if _norm(r["title"]) == n:
+            return r["body"]
+    return ""
 
 
 def _save(data, kind: str, log: list) -> list[dict]:

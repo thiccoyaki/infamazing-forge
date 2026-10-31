@@ -242,6 +242,19 @@ def find_outliers(b: Outliers):
     return {"task": run_task(lambda log: {"videos": yt.outliers(b.links, b.per_channel, b.min_multiple, log)})}
 
 
+class Winners(BaseModel):
+    my_channel: str
+    recent: int = 50
+    min_multiple: float = 1.5
+
+
+@app.post("/api/ideas/winners")
+def my_winners(b: Winners):
+    """Your own latest Shorts that beat your channel median: the starting point for follow-up ideas."""
+    db.set_setting("my_channel", b.my_channel)
+    return {"task": run_task(lambda log: {"videos": yt.outliers([b.my_channel], b.recent, b.min_multiple, log)})}
+
+
 class Bend(BaseModel):
     videos: list[dict]
     mode: str = "adapt"           # adapt = their topic in our structure, bend = new topic with their hook DNA

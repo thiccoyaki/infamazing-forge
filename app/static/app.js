@@ -96,7 +96,7 @@ async function loadIdeas() {
   fillRefChecklist("#gen-refs", $("#gen-refq").value);
   if (!$("#ol-links").value || !$("#fc-mine").value) {
     const st = await api("/settings"); S.settings = st;
-    $("#ol-links").value ||= st.competitors || ""; $("#fc-mine").value ||= st.my_channel || ""; $("#fc-aud").value ||= st.audience_channels || "";
+    $("#ol-links").value ||= st.competitors || ""; $("#fc-mine").value ||= st.my_channel || ""; $("#wn-mine").value ||= st.my_channel || ""; $("#fc-aud").value ||= st.audience_channels || "";
   }
 }
 $("#ideas-all").onchange = loadIdeas;
@@ -113,13 +113,22 @@ $("#mi-go").onclick = guard(async () => {
 $("#ol-go").onclick = guard(async () => {
   const links = $("#ol-links").value.split("\n").map((s) => s.trim()).filter(Boolean);
   const {task} = await post("/ideas/outliers", {links, per_channel: +$("#ol-n").value, min_multiple: +$("#ol-mult").value});
-  S.outliers = (await waitTask(task, $("#ideas-log"), $("#ol-go"))).videos;
+  showOutliers((await waitTask(task, $("#ideas-log"), $("#ol-go"))).videos, "Competitor outliers", "adapt");
+});
+$("#wn-go").onclick = guard(async () => {
+  const ch = $("#wn-mine").value.trim(); if (!ch) return toast("paste your channel link");
+  $("#fc-mine").value ||= ch;
+  const {task} = await post("/ideas/winners", {my_channel: ch, recent: +$("#ol-n").value, min_multiple: 1.5});
+  showOutliers((await waitTask(task, $("#ideas-log"), $("#wn-go"))).videos, "Your winning Shorts (≥1.5× your median)", "winners");
+});
+function showOutliers(videos, head, mode) {
+  S.outliers = videos; $("#ol-head").textContent = head; $("#bend-mode").value = mode;
   $("#ol-panel").classList.remove("hidden");
   $("#ol-tiles").innerHTML = S.outliers.map((v, i) => `<div class="tile ${i < 6 ? "on" : ""}" data-i="${i}"><span class="chk">✓</span>
     <img loading="lazy" src="${esc(v.thumb)}" style="aspect-ratio:16/9"><div class="nm" title="${esc(v.title)}">${esc(v.title)}</div>
     <div class="meta"><b>${v.multiple}×</b> · ${v.views.toLocaleString()} · ${v.age_days}d</div><div class="yt">${esc(v.channel)}</div></div>`).join("") || `<span class="muted">no outliers found</span>`;
   $$("#ol-tiles .tile").forEach((t) => t.onclick = () => t.classList.toggle("on"));
-});
+}
 // ---------- competitor channel finder
 const num = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? Math.round(n / 1e3) + "K" : String(n || 0);
 $("#fc-go").onclick = guard(async () => {

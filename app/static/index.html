@@ -40,7 +40,9 @@
         <textarea id="ol-links" rows="3" placeholder="https://www.youtube.com/@HistoricFoods"></textarea>
         <div class="row"><label class="inline">last <input id="ol-n" type="number" value="50" style="width:70px"> Shorts</label>
           <label class="inline">≥ <input id="ol-mult" type="number" step="0.5" value="2" style="width:60px">× median</label></div>
-        <button id="ol-go">Find outliers</button>
+        <div class="row"><button id="ol-go">Find outliers</button><span class="spacer"></span></div>
+        <label>…or start from your own winners: your channel</label>
+        <div class="row"><input id="wn-mine" placeholder="https://www.youtube.com/@infamazing"><button id="wn-go" class="primary">My winning Shorts</button></div>
       </div>
       <div class="panel">
         <h3>Add your own</h3>
@@ -79,8 +81,8 @@
     </details>
 
     <div id="ol-panel" class="panel hidden">
-      <div class="row"><b>Outliers</b><span class="muted small">click to pick, then turn them into Infamazing ideas</span><span class="spacer"></span>
-        <select id="bend-mode" style="width:auto;flex:none"><option value="adapt">Their topic, our structure</option><option value="bend">New topic, their hook DNA</option></select>
+      <div class="row"><b id="ol-head">Outliers</b><span class="muted small">click to pick, then turn them into Infamazing ideas</span><span class="spacer"></span>
+        <select id="bend-mode" style="width:auto;flex:none"><option value="adapt">Their topic, our structure</option><option value="bend">New topic, their hook DNA</option><option value="winners">Follow-ups to my winners</option></select>
         <label class="inline">ideas <input id="bend-n" type="number" value="10" style="width:60px"></label>
         <button class="primary" id="bend-go">Turn picked into ideas</button></div>
       <div id="ol-tiles" class="tiles"></div>
