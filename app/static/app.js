@@ -37,7 +37,7 @@ function show(view) {
   window.scrollTo(0, 0);
   $$("nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
   $$(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + view));
-  ({ideas: loadIdeas, videos: loadVideos, refs: loadRefs, formats: loadFormats, settings: loadSettings}[view] || (() => {}))();
+  ({ideas: loadIdeas, scout: loadScout, videos: loadVideos, refs: loadRefs, formats: loadFormats, settings: loadSettings}[view] || (() => {}))();
 }
 $$("nav button").forEach((b) => b.onclick = () => show(b.dataset.view));
 
@@ -170,6 +170,66 @@ $("#gen-go").onclick = guard(async () => {
   toast(`writing ${idea_ids.length} script(s)… this takes a few minutes each`);
   const r = await waitTask(task, $("#ideas-log"), $("#gen-go"));
   toast(`${r.ids.length} video folder(s) ready`); loadIdeas();
+});
+
+// ---------- competitor scout (COMPETITOR_SCOUT.md)
+const SC_PH = {me: "your channel link (blank = saved one)", like: "any channel link or @handle", niche: "a niche, e.g. fast food brand facts"};
+async function loadScout() {
+  const r = await api("/scout"); S.scout = r;
+  $("#sc-gl").value = r.settings.gl || "US";
+  if (r.last && !$("#sc-q").dataset.init) { $("#sc-q").dataset.init = 1; $("#sc-mode").value = r.last.mode; $("#sc-q").value = r.last.query || ""; renderScout(r.last); }
+  scMode();
+}
+function scMode() { const m = $("#sc-mode").value; $("#sc-q").placeholder = m === "me" && S.scout ? S.scout.settings.channel : SC_PH[m]; }
+$("#sc-mode").onchange = scMode;
+$("#sc-gl").onchange = () => put("/scout/settings", {gl: $("#sc-gl").value});
+function renderScout(r) {
+  S.scan = r;
+  const v = r.verdict || {}, f = r.funnel || {};
+  const vc = {open: "ok", competitive: "new", crowded: "bad"}[v.verdict] || "";
+  $("#sc-summary").innerHTML = `<div class="panel"><b>Niche: <span class="pill ${vc}">${esc(v.verdict || "?")}</span></b>
+    ${v.usual != null ? ` · a Short usually gets <b>${num(v.usual)}</b>` : ""} · ${v.hot_now || 0} breakout(s) in the last 7 days
+    ${v.small_winning?.length ? `<br>small channels winning: ${esc(v.small_winning.join(", "))}` : ""}${v.new_winning?.length ? `<br>new channels winning: ${esc(v.new_winning.join(", "))}` : ""}
+    <div class="small muted">${f.seeds} seeds · ${f.read} read · ${f.seen} channels seen · ${f.measured} measured · ${f.shorts_creators} active Shorts-first · ${f.kept} kept · ${when(new Date(r.at * 1000).toISOString())}</div></div>`;
+  $("#sc-n").textContent = `(${(r.channels || []).length})`;
+  $("#sc-table tbody").innerHTML = (r.channels || []).map((c, i) => `<tr data-i="${i}">
+    <td><input type="checkbox" class="scpick" ${i < 8 ? "checked" : ""}></td>
+    <td><img class="thumb" style="width:28px;height:28px;border-radius:50%;vertical-align:middle" src="${esc(c.thumb)}"> <a href="https://www.youtube.com/channel/${c.id}" target="_blank" rel="noopener">${esc(c.name)}</a>
+      ${c.pinned ? '<span class="pill new">pinned</span>' : ""}<div class="small muted">${esc(c.why || "")}</div></td>
+    <td><b>${c.closeness}</b></td><td>${c.fit}</td><td><span class="pill ${c.grade === "close" ? "ok" : ""}">${esc(c.grade)}</span>${c.appearances ? ` ×${c.appearances}` : ""}</td>
+    <td>${num(c.subs)}</td><td>${num(c.usual)}</td><td>${num(c.best)}</td><td>${c.rising == null ? "—" : c.rising + "×"}</td><td>${c.per_week}</td>
+    <td>${c.last_short_days == null ? "—" : Math.round(c.last_short_days) + "d"}</td>
+    <td><button class="sc-pin small">${c.pinned ? "Unpin" : "Pin"}</button></td></tr>`).join("") || `<tr><td colspan="12" class="muted">none kept</td></tr>`;
+  $$("#sc-table .sc-pin").forEach((b) => b.onclick = guard(async () => {
+    const c = r.channels[+b.closest("tr").dataset.i];
+    await post("/scout/pin", {link: c.id, on: !c.pinned}); c.pinned = !c.pinned; renderScout(r);
+    toast(c.pinned ? `pinned ${c.name}: always kept` : `unpinned ${c.name}`);
+  }));
+  $("#sc-feed").innerHTML = (r.feed || []).map((h, i) => `<div class="tile ${i < 10 ? "on" : ""}" data-i="${i}"><span class="chk">✓</span>
+    <img loading="lazy" src="${esc(h.thumb)}" style="aspect-ratio:16/9"><div class="nm" title="${esc(h.title)}">${esc(h.title)}</div>
+    <div class="meta"><b>${h.x}×</b> · ${num(h.views)} · ${Math.round(h.age_days)}d</div><div class="yt"><a href="https://youtube.com/shorts/${h.id}" target="_blank">${esc(h.channel)}</a></div></div>`).join("") || `<span class="muted">nothing breaking out in the last 14 days</span>`;
+  $$("#sc-feed .tile").forEach((t) => t.onclick = (e) => { if (e.target.tagName !== "A") t.classList.toggle("on"); });
+  $("#sc-dropped-n").textContent = `(${(r.dropped || []).length})`;
+  $("#sc-dropped").innerHTML = (r.dropped || []).map((d) => `${esc(d.name)}: fit ${d.fit}, ${esc(d.why)}`).join("<br>") || "none";
+}
+$("#sc-go").onclick = guard(async () => {
+  const {task} = await post("/scout/scan", {mode: $("#sc-mode").value, query: $("#sc-q").value.trim(), refresh: $("#sc-refresh").checked, llm_model: $("#gen-llm").value});
+  const r = await waitTask(task, $("#sc-log"), $("#sc-go")); renderScout(r);
+  toast(`${r.channels.length} competitors · niche ${r.verdict.verdict}`);
+});
+$("#sc-pin-go").onclick = guard(async () => { const l = $("#sc-pin-link").value.trim(); if (!l) return; await post("/scout/pin", {link: l}); $("#sc-pin-link").value = ""; toast("pinned: kept from the next scan"); });
+$("#sc-to-ol").onclick = guard(async () => {
+  const links = $$("#sc-table .scpick:checked").map((c) => `https://www.youtube.com/channel/${S.scan.channels[+c.closest("tr").dataset.i].id}`);
+  if (!links.length) return toast("tick some channels");
+  const r = await post("/channels/add", {links}); $("#ol-links").value = r.competitors.join("\n");
+  toast(`${r.added} added to the outlier finder (Ideas tab)`);
+});
+$("#sc-ideas").onclick = guard(async () => {
+  const videos = $$("#sc-feed .tile.on").map((t) => S.scan.feed[+t.dataset.i])
+    .map((h) => ({id: h.id, title: h.title, channel: h.channel, views: h.views, multiple: h.x, url: `https://youtube.com/shorts/${h.id}`}));
+  if (!videos.length) return toast("pick some Shorts");
+  const {task} = await post("/ideas/bend", {videos, mode: $("#sc-idea-mode").value, count: Math.max(5, videos.length), llm_model: $("#gen-llm").value});
+  await waitTask(task, $("#sc-log"), $("#sc-ideas")); toast("ideas added: see the Ideas tab");
 });
 
 // ---------- videos list

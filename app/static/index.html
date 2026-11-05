@@ -14,6 +14,7 @@
   <div class="brand">infamazing-forge</div>
   <nav>
     <button data-view="ideas" class="active"><i>✦</i>Ideas</button>
+    <button data-view="scout"><i>◎</i><span class="full">Competitors</span><span class="short">Rivals</span></button>
     <button data-view="videos"><i>▤</i>Videos</button>
     <button data-view="refs"><i>❝</i><span class="full">References</span><span class="short">Refs</span></button>
     <button data-view="formats"><i>≡</i>Formats</button>
@@ -105,6 +106,29 @@
       </details>
       <table class="grid" id="ideas-table"><thead><tr><th><input type="checkbox" id="ideas-pickall"></th><th>Title</th><th>Angle</th><th>Format</th><th>Source</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
     </div>
+  </section>
+
+  <!-- ======== Competitor scout ======== -->
+  <section id="view-scout" class="view">
+    <div class="toolbar">
+      <select id="sc-mode" style="width:auto"><option value="me">My channel</option><option value="like">Like a channel</option><option value="niche">Niche</option></select>
+      <input id="sc-q">
+      <label class="inline small">region <select id="sc-gl" style="width:auto"><option>US</option><option>GB</option><option>CA</option><option>AU</option><option>PH</option><option>IN</option></select></label>
+      <label class="inline small"><input type="checkbox" id="sc-refresh"> fresh scan</label>
+      <button id="sc-go" class="primary">Scan</button>
+    </div>
+    <div class="small muted">Reads YouTube's Up next beside your 15 latest Shorts (+ one hop out), measures each channel, keeps active Shorts-first ones, Claude checks fit. Cached 3 days.</div>
+    <pre id="sc-log" class="log hidden"></pre>
+    <div id="sc-summary"></div>
+    <div class="row"><h3>Competitors <span id="sc-n" class="muted small"></span></h3><span class="spacer"></span>
+      <button id="sc-to-ol">Picked → outlier finder</button></div>
+    <table class="grid" id="sc-table"><thead><tr><th></th><th>Channel</th><th>Close</th><th>Fit</th><th>Overlap</th><th>Subs</th><th>Usual</th><th>Best</th><th>Rising</th><th>/week</th><th>Last</th><th></th></tr></thead><tbody></tbody></table>
+    <div class="row"><h3>Going off now <span class="muted small">their newest Shorts vs their own usual, age-adjusted</span></h3><span class="spacer"></span>
+      <select id="sc-idea-mode" style="width:auto;flex:none"><option value="adapt">Their topic, our structure</option><option value="bend">New topic, their hook DNA</option></select>
+      <button id="sc-ideas" class="primary">Picked → ideas</button></div>
+    <div id="sc-feed" class="tiles"></div>
+    <details class="panel"><summary>Left out by the fit check <span id="sc-dropped-n" class="muted small"></span></summary><div id="sc-dropped" class="small"></div></details>
+    <div class="row" style="margin-top:12px"><input id="sc-pin-link" placeholder="pin a channel you know: link or @handle (always kept, measured like the rest)"><button id="sc-pin-go">Pin</button></div>
   </section>
 
   <!-- ======== 2. Videos ======== -->

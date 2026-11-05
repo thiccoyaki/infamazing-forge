@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from forge import channels, config as C, db, drive, ideas, llm, output, scripts, vo, yt, ytref
+from forge import channels, config as C, db, drive, ideas, llm, output, scout, scripts, vo, yt, ytref
 
 app = FastAPI(title="infamazing-forge")
 
@@ -306,6 +306,42 @@ def add_competitors(b: AddCompetitors):
     new = [x for x in b.links if x not in have]
     db.set_setting("competitors", "\n".join(have + new))
     return {"added": len(new), "competitors": have + new}
+
+
+# ---------- competitor scout (COMPETITOR_SCOUT.md)
+
+@app.get("/api/scout")
+def scout_state():
+    return {"settings": scout.settings(), "last": scout.last()}
+
+
+@app.put("/api/scout/settings")
+def scout_settings(body: dict):
+    return scout.save_settings(body)
+
+
+class ScanBody(BaseModel):
+    mode: str = "me"  # me | like | niche
+    query: str = ""
+    refresh: bool = False
+    llm_model: str | None = None
+
+
+@app.post("/api/scout/scan")
+def scout_scan(b: ScanBody):
+    if b.mode in ("like", "niche") and not b.query.strip():
+        raise HTTPException(400, "paste a channel link" if b.mode == "like" else "type a niche")
+    return {"task": run_task(lambda log: scout.scan(b.mode, b.query.strip(), b.llm_model, log, b.refresh))}
+
+
+class PinBody(BaseModel):
+    link: str
+    on: bool = True
+
+
+@app.post("/api/scout/pin")
+def scout_pin(b: PinBody):
+    return scout.pin(b.link, b.on)
 
 
 # ---------- videos
