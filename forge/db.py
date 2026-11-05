@@ -77,10 +77,12 @@ def conn():
 def init() -> None:
     with conn() as c:
         c.executescript(SCHEMA)
-        c.execute("UPDATE videos SET status='live' WHERE status='done'")  # old "Mark done" = published
+        c.execute("UPDATE videos SET status='live' WHERE status='done'")
+        if "review" not in {r[1] for r in c.execute("PRAGMA table_info(videos)")}:
+            c.execute("ALTER TABLE videos ADD COLUMN review TEXT NOT NULL DEFAULT '{}'")  # editor report  # old "Mark done" = published
 
 
-JSON_COLS = {"refs", "facts", "style_refs"}
+JSON_COLS = {"refs", "facts", "style_refs", "review"}
 
 
 def _d(r) -> dict | None:
@@ -89,7 +91,7 @@ def _d(r) -> dict | None:
     d = dict(r)
     for k in JSON_COLS & d.keys():
         try:
-            d[k] = json.loads(d[k] or "[]")
+            d[k] = json.loads(d[k] or ("{}" if k == "review" else "[]"))
         except json.JSONDecodeError:
             d[k] = []
     return d

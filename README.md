@@ -57,6 +57,13 @@ Files you add yourself in Drive (edits, thumbnails) are never touched.
 3. Length loop until it lands in the format's char range.
 4. Finds YouTube videos on the same story for references; if none exist, non-YouTube sources (and a YouTube API search as a backup when a key is set).
 5. Best SEO title → folder name.
+6. **Editor pass** (on by default, `forge/review.py`, after Legion's editor): AI-tell regex ("not X, but Y", "The
+   result? Chaos.", stacked fragments, three-word lists, stock phrases; 2+ found → one call rewrites just those);
+   **blind line-up** (script hidden among up to 4 of its style references, editor must spot the imitator; caught at
+   50%+ = fail), or a 0-10 rubric (hook, setup, chain, payoff, voice, spoken; weakest must be 8) when there are no
+   references; up to 2 rewrites from the editor's notes + repeat-guard notes (phrases shared with past scripts,
+   format-prescribed lines excepted), **each kept only if it judges better and stays in length**. The report shows
+   in the editor; **Review again** reruns it.
 
 ## Output
 

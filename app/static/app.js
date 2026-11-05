@@ -166,7 +166,7 @@ $("#gen-go").onclick = guard(async () => {
   const idea_ids = $$(".ipick:checked").map((c) => +c.value);
   if (!idea_ids.length) return toast("tick some ideas first");
   const {task} = await post("/videos/generate", {idea_ids, format: $("#gen-fmt").value, ref_ids: pickedRefs("#gen-refs"),
-    notes: $("#gen-notes").value, llm_model: $("#gen-llm").value, make_vo: $("#gen-vo").checked});
+    notes: $("#gen-notes").value, llm_model: $("#gen-llm").value, make_vo: $("#gen-vo").checked, edit: $("#gen-edit").checked});
   toast(`writing ${idea_ids.length} script(s)… this takes a few minutes each`);
   const r = await waitTask(task, $("#ideas-log"), $("#gen-go"));
   toast(`${r.ids.length} video folder(s) ready`); loadIdeas();
@@ -293,6 +293,13 @@ function renderVideo() {
   $$("#ve-refs button").forEach((b) => b.onclick = guard(async () => { v.refs.splice(+b.dataset.i, 1); await saveVideo({refs: v.refs}); }));
   $("#ve-facts").innerHTML = (v.facts || []).map((x) => `<li>${esc(x)}</li>`).join("");
   $("#ve-notes").textContent = v.notes || "";
+  const rv = v.review || {};
+  $("#ve-review-out").innerHTML = !rv.kind ? `<span class="muted">not reviewed</span>` :
+    `<b class="${rv.passed ? "pass" : "fail"}">${rv.kind === "blind" ? (rv.caught ? `caught in the blind test (${rv.confidence}%)` : `passed the blind test${rv.confidence ? ` (${rv.confidence}% suspicion)` : ""}`)
+      : `rubric ${Object.entries(rv.scores).map(([k, n]) => `${k} ${n}`).join(" · ")}`}</b> · ${rv.rounds} rewrite round(s)
+    ${(rv.notes || []).length ? `<ul>${rv.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
+    ${(rv.tells_left || []).length ? `<div>AI tells left: ${rv.tells_left.map((t) => `<span class="pill warn" title="${esc(t.text)}">${esc(t.tell)}</span>`).join("")}</div>` : ""}
+    ${(rv.repeats || []).length ? `<div>Repeat guard: ${rv.repeats.map(esc).join(" · ")}</div>` : ""}`;
   $("#vo-result").innerHTML = v.vo_seconds ? `<h4>${fmtS(v.vo_seconds)} (raw ${fmtS(v.vo_raw_seconds)}) · ${esc(v.voice_name)}${v.vo_stale ? ' <span class="pill warn">script changed since</span>' : ""}</h4>
     <audio controls src="/api/videos/${v.id}/audio/clean?${Date.now()}"></audio>` : "";
 }
@@ -312,6 +319,12 @@ $("#ve-ref-add").onclick = guard(async () => {
   const url = $("#ve-ref-url").value.trim(); if (!url) return;
   S.video.refs.push({title: $("#ve-ref-title").value.trim(), url, kind: /youtu/.test(url) ? "youtube" : "web"});
   $("#ve-ref-url").value = $("#ve-ref-title").value = ""; await saveVideo({refs: S.video.refs});
+});
+$("#ve-review").onclick = guard(async () => {
+  await saveVideo();
+  const {task} = await post(`/videos/${S.video.id}/review`, {llm_model: $("#gen-llm").value});
+  await waitTask(task, $("#ve-log"), $("#ve-review"));
+  S.video = await api(`/videos/${S.video.id}`); $("#ve-script").value = S.video.script; renderVideo();
 });
 $("#ve-rev-go").onclick = guard(async () => {
   if (!$("#ve-rev").value.trim()) return;

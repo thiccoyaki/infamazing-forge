@@ -95,6 +95,7 @@
         <label class="inline"><input id="ideas-all" type="checkbox"> show used / skipped</label>
         <span class="spacer"></span>
         <select id="gen-fmt" style="width:auto"></select>
+        <label class="inline" title="AI-tell fix, blind line-up vs your references (rubric if none), rewrites kept only if better"><input id="gen-edit" type="checkbox" checked> editor</label>
         <label class="inline"><input id="gen-vo" type="checkbox" checked> + VO</label>
         <button class="primary" id="gen-go">Write scripts for picked</button></div>
       <details><summary class="small muted">script options: style references, notes, model</summary>
@@ -160,6 +161,8 @@
           <h4>References <span class="muted small">(go into references.txt)</span></h4>
           <div id="ve-refs"></div>
           <div class="row"><input id="ve-ref-title" placeholder="title" style="max-width:240px"><input id="ve-ref-url" placeholder="https://…"><button id="ve-ref-add">Add</button></div>
+          <h4>Editor <button id="ve-review" class="small">Review again</button></h4>
+          <div id="ve-review-out" class="small"></div>
           <details><summary class="small muted">verified facts / notes</summary><ul id="ve-facts" class="small"></ul><div id="ve-notes" class="small muted"></div></details>
         </div>
         <div class="side">

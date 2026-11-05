@@ -89,7 +89,8 @@ def auto_refs(fmt: str, n: int = 3) -> list[int]:
 
 # ---------- generate
 
-def generate(topic: str, angle: str, fmt: str, ref_ids: list[int], notes: str, llm_model: str, log: list) -> dict:
+def generate(topic: str, angle: str, fmt: str, ref_ids: list[int], notes: str, llm_model: str, log: list,
+             edit: bool = True) -> dict:
     f = parse_format(read_format(fmt), fmt)
     ref_ids = ref_ids or auto_refs(fmt)
     refs = style_block(ref_ids)
@@ -123,6 +124,11 @@ Reply with JSON only:
         raise llm.ClaudeError("Claude returned no script")
     script = clean_script(data["script"])
     script = fit_length(script, f["min_chars"], f["max_chars"], fmt, llm_model, log)
+    rep = {}
+    if edit:
+        from . import review
+        script, rep = review.review(script, fmt, ref_ids, [str(x) for x in data.get("facts") or []], llm_model, log,
+                                    str(data.get("title") or ""))
     refs_out = [r for r in data.get("references") or [] if isinstance(r, dict) and str(r.get("url", "")).startswith("http")]
     if not any(r.get("kind") == "youtube" or "youtu" in r["url"] for r in refs_out):
         try:  # Claude found none: one more look with the YouTube API, if a key is set
@@ -136,7 +142,7 @@ Reply with JSON only:
         log.append("premise note: " + data["premise_note"])
     return {"title": " ".join(str(data.get("title") or topic).split())[:100], "script": script,
             "facts": [str(x) for x in data.get("facts") or []], "refs": refs_out, "style_refs": ref_ids,
-            "notes": data.get("premise_note") or ""}
+            "notes": data.get("premise_note") or "", "review": rep}
 
 
 def fit_length(script: str, lo: int, hi: int, fmt: str, llm_model: str, log: list) -> str:

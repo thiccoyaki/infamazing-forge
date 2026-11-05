@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from forge import channels, config as C, db, drive, ideas, llm, output, scout, scripts, vo, yt, ytref
+from forge import channels, config as C, db, drive, ideas, llm, output, review, scout, scripts, vo, yt, ytref
 
 app = FastAPI(title="infamazing-forge")
 
@@ -380,6 +380,7 @@ class Generate(BaseModel):
     notes: str = ""
     llm_model: str | None = None
     make_vo: bool = False
+    edit: bool = True             # editor pass: AI-tell fix, blind line-up / rubric, keep-only-if-better rewrites
 
 
 @app.post("/api/videos/generate")
@@ -398,10 +399,10 @@ def generate(b: Generate):
         for n, (topic, angle, fmt, iid) in enumerate(jobs, 1):
             log.append(f"[{n}/{len(jobs)}] {topic}")
             try:
-                g = scripts.generate(topic, angle, fmt or scripts.default_format(), b.ref_ids, b.notes, b.llm_model, log)
+                g = scripts.generate(topic, angle, fmt or scripts.default_format(), b.ref_ids, b.notes, b.llm_model, log, b.edit)
                 vid = db.create_video(title=g["title"], topic=f"{topic}" + (f" | {angle}" if angle else ""), format=fmt,
                                       script=g["script"], refs=g["refs"], facts=g["facts"], style_refs=g["style_refs"],
-                                      notes=g["notes"])
+                                      notes=g["notes"], review=g["review"])
                 if iid:
                     db.update_idea(iid, status="used", video_id=vid)
                 d = output.write(vid)
@@ -455,6 +456,21 @@ def revise(vid: int, b: Revise):
         db.update_video(vid, script=new)
         output.write(vid)
         return {"chars": len(new)}
+    return {"task": run_task(work)}
+
+
+@app.post("/api/videos/{vid}/review")
+def review_video(vid: int, body: dict):
+    v = db.get_video(vid)
+    if not v:
+        raise HTTPException(404)
+
+    def work(log):
+        ref_ids = v["style_refs"] or scripts.auto_refs(v["format"])
+        new, rep = review.review(v["script"], v["format"], ref_ids, v["facts"], body.get("llm_model"), log, v["title"])
+        db.update_video(vid, script=new, review=rep)
+        output.write(vid)
+        return rep
     return {"task": run_task(work)}
 
 
